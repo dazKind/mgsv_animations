@@ -1,13 +1,14 @@
 bl_info = {
     "name": "Import MGSV FMDL / GANI",
     "author": "mgsv_animations",
-    "version": (0, 8, 2),
+    "version": (0, 8, 3),
     "blender": (4, 2, 0),
     "location": "File > Import",
     "category": "Import-Export",
 }
 
 import math
+import os
 import sys
 from pathlib import Path
 
@@ -16,19 +17,37 @@ from bpy.props import BoolProperty, IntProperty, StringProperty
 from bpy_extras.io_utils import ImportHelper
 from mathutils import Matrix, Vector
 
+def _has_fox(path: Path) -> bool:
+    return (path / "fox" / "__init__.py").is_file()
+
+
 def _repo() -> Path:
+    env = os.environ.get("MGSV_ANIMATIONS")
+    if env:
+        path = Path(env).expanduser().resolve()
+        if _has_fox(path):
+            return path
     here = Path(__file__).resolve()
-    for parent in (here.parents[1], here.parents[2], Path("/home/mib/Development/gamedev/engine/modding/mgsv_animations")):
-        if (parent / "fox" / "__init__.py").is_file():
+    for parent in here.parents:
+        if _has_fox(parent):
             return parent
-    return here.parents[2]
-
-
-REPO = _repo()
+    blend = getattr(bpy.data, "filepath", "") or ""
+    if blend:
+        for parent in Path(blend).resolve().parents:
+            if _has_fox(parent):
+                return parent
+    cwd = Path.cwd().resolve()
+    for parent in (cwd, *cwd.parents):
+        if _has_fox(parent):
+            return parent
+    raise RuntimeError(
+        "Cannot find the mgsv_animations repo (fox/ missing). "
+        "Set MGSV_ANIMATIONS to the repo root."
+    )
 
 
 def _ensure_fox() -> None:
-    root = str(REPO)
+    root = str(_repo())
     if root not in sys.path:
         sys.path.insert(0, root)
 
@@ -375,7 +394,7 @@ class IMPORT_OT_mgsv_player(bpy.types.Operator, ImportHelper):
         gani_dir = self.gani_dir
         frig = self.frig_path
         if self.def_paths:
-            base = REPO / "extracted" / "player"
+            base = _repo() / "extracted" / "player"
             if not gani_dir:
                 gani_dir = str(base / "mtar" / "TppGzPlayer_layers")
             if not frig:
@@ -409,9 +428,9 @@ class IMPORT_OT_mgsv_gani_folder(bpy.types.Operator, ImportHelper):
         from fox.frig import read_frig
         from fox.gani import read_gani
 
-        fmdl = REPO / "extracted" / "player" / "fpk" / "sna2_main0_def.fmdl"
+        fmdl = _repo() / "extracted" / "player" / "fpk" / "sna2_main0_def.fmdl"
         frig_path = self.frig_path or str(
-            REPO / "extracted" / "player" / "fpk" / "Assets" / "tpp" / "rig" / "frig" / "human_finger.frig"
+            _repo() / "extracted" / "player" / "fpk" / "Assets" / "tpp" / "rig" / "frig" / "human_finger.frig"
         )
         skel = read_skeleton(fmdl)
         frig = read_frig(frig_path)

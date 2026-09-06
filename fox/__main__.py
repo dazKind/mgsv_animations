@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 from .fmdl import read_skeleton
@@ -18,9 +20,26 @@ from .smd import write_smd
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DICT = ROOT / "dict" / "gzs_dictionary.txt"
-DEFAULT_GAME = Path(
-    "/home/username/.local/share/Steam/steamapps/common/Metal Gear Solid Ground Zeroes"
-)
+_GZ_NAME = "Metal Gear Solid Ground Zeroes"
+
+
+def _default_game() -> Path:
+    home = Path.home()
+    candidates = [
+        home / ".local/share/Steam/steamapps/common" / _GZ_NAME,
+        home / ".steam/steam/steamapps/common" / _GZ_NAME,
+        home / ".steam/root/steamapps/common" / _GZ_NAME,
+    ]
+    steam = os.environ.get("STEAM_DIR") or os.environ.get("STEAM_PATH")
+    if steam:
+        candidates.insert(0, Path(steam).expanduser() / "steamapps/common" / _GZ_NAME)
+    for path in candidates:
+        if path.is_dir():
+            return path
+    return candidates[0]
+
+
+DEFAULT_GAME = _default_game()
 PLAYER_EXTS = {".mtar", ".frig", ".fmdl", ".gani", ".fpk", ".fpkd", ".mog", ".parts"}
 PLAYER_HINTS = (
     "player",
@@ -89,43 +108,57 @@ def cmd_dump_gani(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_to_blend(args: argparse.Namespace) -> int:
+def _find_blender(explicit: str) -> Path | None:
     import shutil
+
+    if explicit:
+        path = Path(explicit).expanduser()
+        return path if path.is_file() else None
+    env = os.environ.get("BLENDER")
+    if env:
+        path = Path(env).expanduser()
+        if path.is_file():
+            return path
+    which = shutil.which("blender")
+    return Path(which) if which else None
+
+
+def cmd_to_blend(args: argparse.Namespace) -> int:
     import subprocess
 
-    blender = (
-        args.blender
-        or shutil.which("blender")
-        or "/home/username/Tools/blender-5.2.1-linux-x64/blender"
-        or "/home/username/Tools/blender-4.5.3-linux-x64/blender"
-    )
-    if not Path(blender).is_file():
-        print("blender not found", file=sys.stderr)
+    blender = _find_blender(args.blender)
+    if blender is None:
+        print("blender not found. Pass --blender or set BLENDER.", file=sys.stderr)
         return 1
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    script = Path("/tmp/mgsv_to_blend.py")
-    script.write_text(
-        "\n".join(
-            [
-                "import sys",
-                f"sys.path.insert(0, {str(ROOT / 'blender_addon')!r})",
-                f"sys.path.insert(0, {str(ROOT)!r})",
-                "import bpy",
-                "for obj in list(bpy.data.objects):",
-                "    bpy.data.objects.remove(obj, do_unlink=True)",
-                "from io_import_mgsv import import_player",
-                f"name, actions = import_player(bpy.context, {args.fmdl!r}, {args.gani_dir!r}, {args.frig!r}, {args.max})",
-                "print('object', name, 'actions', len(actions))",
-                f"bpy.ops.wm.save_as_mainfile(filepath={str(out)!r})",
-            ]
+    fd, script_name = tempfile.mkstemp(suffix=".py", prefix="mgsv_to_blend_")
+    os.close(fd)
+    script = Path(script_name)
+    try:
+        script.write_text(
+            "\n".join(
+                [
+                    "import sys",
+                    f"sys.path.insert(0, {str(ROOT / 'blender_addon')!r})",
+                    f"sys.path.insert(0, {str(ROOT)!r})",
+                    "import bpy",
+                    "for obj in list(bpy.data.objects):",
+                    "    bpy.data.objects.remove(obj, do_unlink=True)",
+                    "from io_import_mgsv import import_player",
+                    f"name, actions = import_player(bpy.context, {args.fmdl!r}, {args.gani_dir!r}, {args.frig!r}, {args.max})",
+                    "print('object', name, 'actions', len(actions))",
+                    f"bpy.ops.wm.save_as_mainfile(filepath={str(out)!r})",
+                ]
+            )
+            + "\n",
+            encoding="utf-8",
         )
-        + "\n",
-        encoding="utf-8",
-    )
-    cmd = [blender, "-b", "-noaudio", "--python", str(script)]
-    print(" ".join(cmd))
-    return subprocess.call(cmd)
+        cmd = [str(blender), "-b", "-noaudio", "--python", str(script)]
+        print(" ".join(cmd))
+        return subprocess.call(cmd)
+    finally:
+        script.unlink(missing_ok=True)
 
 
 def cmd_to_smd(args: argparse.Namespace) -> int:

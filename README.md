@@ -37,6 +37,11 @@ Existing `.blend` files keep their baked actions until you re-import
 (File > Import > MGSV GANI folder, or `to-blend`). The solver in `fox/clip.py`
 is what a new bake uses.
 
+`extract-player` looks for the game under `$HOME/.local/share/Steam` (or
+`$STEAM_DIR`). `to-blend` uses `blender` on `PATH`, `--blender`, or
+`$BLENDER`. The addon finds this repo next to itself, from the open
+`.blend`, from the working directory, or `$MGSV_ANIMATIONS`.
+
 ## Pose solver
 
 > [!IMPORTANT]
@@ -104,7 +109,7 @@ python3 -m unittest discover -s tests -v
 
 ## Blender addon
 
-Enable `Import MGSV FMDL / GANI` (0.8.2). File > Import offers:
+Enable `Import MGSV FMDL / GANI` (0.8.3). File > Import offers:
 
 - **MGSV Player (FMDL + GANI folder)** - build armature + import clips
 - **MGSV GANI folder (actions)** - bake clips onto the selected `sna2` armature
