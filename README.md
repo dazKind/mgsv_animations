@@ -39,6 +39,9 @@ is what a new bake uses.
 
 ## Pose solver
 
+> [!IMPORTANT]
+> This solver is best effort. There are still animations that might look weird.
+
 Fox identity-rest FK, then two-bone IK. GANI stores positions for the
 **end effectors** (hands, feet) and ROOT - not for the elbow or knee.
 FRIG marks each limb as a two-bone chain, so the mid joint is solved at
