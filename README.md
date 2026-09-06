@@ -1,6 +1,6 @@
 # MGSV Ground Zeroes - Animation Tools
 
-Python 3 tools for reading Metal Gear Solid V: Ground Zeroes (Fox Engine)
+Python 3 tools for **reading** Metal Gear Solid V: Ground Zeroes (Fox Engine)
 player animation data and importing it into Blender. Reads the FMDL skeleton,
 GANI clips, and FRIG rig, solves two-bone IK for the arms and legs, and
 bakes Blender actions (or Source SMD).
@@ -108,6 +108,11 @@ Enable `Import MGSV FMDL / GANI` (0.8.2). File > Import offers:
 
 Switch clips in the Action Editor. Playback is 30 fps. Re-import after a
 solver change; old actions are not updated in place.
+
+## Media
+<img width="1271" height="720" alt="snapdam_s_die_idl_l" src="https://github.com/user-attachments/assets/135ab57b-fcaf-4222-84eb-968ea70a4192" />
+<img width="1271" height="720" alt="ride-getout" src="https://github.com/user-attachments/assets/353e7193-a773-411f-bdc0-6c199c2236d2" />
+<img width="1271" height="720" alt="grab-90" src="https://github.com/user-attachments/assets/76287874-56da-44bd-ad72-af38159baf55" />
 
 ## References and thanks
 
